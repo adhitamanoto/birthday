@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Shooting</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:linear-gradient(180deg,#f3e8ff,#e6eeff);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  cursor:none;
+}
+
+
+/* ================= CROSSHAIR ================= */
+
+#crosshair{
+  position:fixed;
+  width:80px;
+  height:80px;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  z-index:9999;
+  filter:drop-shadow(0 0 6px rgba(0,0,0,.6));
+}
+
+
+/* ================= GAME ================= */
+
+.game{
+  width:1100px;
+  height:650px;
+  background:#fdfdff;
+  border-radius:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,.12), inset 0 0 40px rgba(0,0,0,.03);
+  position:relative;
+  overflow:hidden;
+}
+
+.hud{
+  position:absolute;
+  top:14px;
+  left:18px;
+  font-weight:700;
+  font-size:18px;
+  background:rgba(255,255,255,.7);
+  padding:6px 12px;
+  border-radius:10px;
+}
+
+.target{
+  position:absolute;
+  width:90px;
+  height:90px;
+  user-select:none;
+}
+
+.center{
+  position:absolute;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.storyBox{
+  text-align:center;
+  max-width:520px;
+  line-height:1.6;
+}
+
+button{
+  margin-top:18px;
+  padding:14px 22px;
+  border:none;
+  border-radius:12px;
+  background:#c77dff;
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<img id="crosshair" src="crosshair.png">
+
+<div class="game" id="game">
+
+  <div class="hud" id="hud">0 / 19</div>
+
+  <!-- STORY / START / OUTRO SCREEN -->
+  <div class="center" id="overlay">
+    <div class="storyBox">
+      <div id="storyText"></div>
+      <button id="storyBtn">Next</button>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+/* =====================================================
+   JOURNEY
+===================================================== */
+
+function getJourney(){
+  return JSON.parse(localStorage.getItem("journey"));
+}
+function saveJourney(j){
+  localStorage.setItem("journey", JSON.stringify(j));
+}
+
+let journey = getJourney();
+
+if(!journey || !journey.path){
+  window.location.href="index.html";
+}
+
+if(!journey.order.includes("index1")){
+  journey.order.push("index1");
+  saveJourney(journey);
+}
+
+
+/* =====================================================
+   PATH ASSETS
+===================================================== */
+
+let TARGET_IMG, SHOOT_SOUND, MISS_SOUND;
+
+if(journey.path==="A"){
+  TARGET_IMG="target.png";
+  SHOOT_SOUND="shoot.mp3";
+  MISS_SOUND="miss.mp3";
+}else{
+  TARGET_IMG="target2.jpg";
+  SHOOT_SOUND="shoot2.mp3";
+  MISS_SOUND="miss2.m4a";
+}
+
+const shootAudio=new Audio(SHOOT_SOUND);
+const missAudio=new Audio(MISS_SOUND);
+
+
+/* =====================================================
+   CROSSHAIR
+===================================================== */
+
+const cross=document.getElementById("crosshair");
+document.addEventListener("mousemove",e=>{
+  cross.style.left=e.clientX+"px";
+  cross.style.top=e.clientY+"px";
+});
+
+
+/* =====================================================
+   STORY SYSTEM
+===================================================== */
+
+const overlay=document.getElementById("overlay");
+const storyText=document.getElementById("storyText");
+const storyBtn=document.getElementById("storyBtn");
+
+let pages=[];
+let pageIndex=0;
+let phase="intro";
+
+const name = journey.name || "Bon";
+
+if(journey.path==="A"){
+  pages=[
+    "You step into an open field.",
+    "Targets pop up everywhere.\nFast. Chaotic.",
+    "My voice echoes:\n\"Alright " + name + "... reflex test. Don’t miss.\""
+  ];
+}else{
+  pages=[
+    "You enter a quiet training room.",
+    "Small drones hover in perfect patterns.",
+    "I whisper:\n\"Okay " + name + "... let’s see how observant you really are.\""
+  ];
+}
+
+showPage();
+
+function showPage(){
+  storyText.textContent=pages[pageIndex];
+}
+
+storyBtn.onclick=()=>{
+  pageIndex++;
+
+  if(pageIndex>=pages.length){
+    overlay.style.display="none";
+    startGame();
+  }else{
+    showPage();
+  }
+};
+
+
+/* =====================================================
+   GAME
+===================================================== */
+
+const TOTAL=19;
+const START_TIME=2000;
+const END_TIME=500;
+const TARGET_SIZE=90;
+const MARGIN=20;
+
+let score=0;
+let timeout;
+
+const game=document.getElementById("game");
+const hud=document.getElementById("hud");
+
+function startGame(){
+  spawn();
+}
+
+function spawn(){
+
+  if(score>=TOTAL){
+    finish();
+    return;
+  }
+
+  hud.textContent=score+" / "+TOTAL;
+
+  const t=document.createElement("img");
+  t.src=TARGET_IMG;
+  t.className="target";
+
+  const x=Math.random()*(game.clientWidth-TARGET_SIZE-MARGIN*2)+MARGIN;
+  const y=Math.random()*(game.clientHeight-TARGET_SIZE-MARGIN*2)+MARGIN;
+
+  t.style.left=x+"px";
+  t.style.top=y+"px";
+
+  game.appendChild(t);
+
+  t.onclick=()=>{
+    shootAudio.currentTime=0;
+    shootAudio.play();
+    clearTimeout(timeout);
+    t.remove();
+    score++;
+    spawn();
+  };
+
+  const progress=score/(TOTAL-1);
+  const life=START_TIME+(END_TIME-START_TIME)*progress;
+
+  timeout=setTimeout(()=>{
+    t.remove();
+    missAudio.currentTime=0;
+    missAudio.play();
+    score=Math.max(0,score-1);
+    spawn();
+  },life);
+}
+
+
+/* =====================================================
+   OUTRO + NEXT LEVEL
+===================================================== */
+
+function finish(){
+
+  overlay.style.display="flex";
+  phase="outro";
+
+  if(journey.path==="A"){
+    pages=[
+      "Nice shooting.",
+      "The noise fades.\nA door slides open ahead.",
+      "Guess we’re not done yet…"
+    ];
+  }else{
+    pages=[
+      "Patterns solved.",
+      "The drones power down.\nSomething unlocks nearby.",
+      "Told you thinking works too."
+    ];
+  }
+
+  pageIndex=0;
+  showPage();
+
+  storyBtn.textContent="Continue →";
+
+  storyBtn.onclick=()=>{
+    pageIndex++;
+
+    if(pageIndex>=pages.length){
+      goNext();
+    }else{
+      showPage();
+    }
+  };
+}
+
+function goNext(){
+
+  if(!journey.order.includes("index2")){
+    window.location.href="index2.html";
+  }
+  else if(!journey.order.includes("index4")){
+    window.location.href="index4.html";
+  }
+  else{
+    window.location.href="index5.html";
+  }
+}
+</script>
+
+</body>
+</html>

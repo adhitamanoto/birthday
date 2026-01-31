@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Final Puzzle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui;
+  background:linear-gradient(180deg,#fff6f0,#f3f7ff);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+/* =============================
+   STORY OVERLAY
+============================= */
+
+#storyOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  color:white;
+  text-align:center;
+}
+
+#storyBox{
+  max-width:600px;
+  padding:28px;
+  line-height:1.6;
+}
+
+#storyBtn{
+  margin-top:18px;
+  padding:12px 20px;
+  border:none;
+  border-radius:12px;
+  background:#c77dff;
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+}
+
+/* =============================
+   GAME LAYOUT
+============================= */
+
+.game{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,120px);
+  grid-template-rows:repeat(3,120px);
+  gap:6px;
+}
+
+.tile{
+  width:120px;
+  height:120px;
+  border-radius:8px;
+  cursor:pointer;
+  background-size:360px 360px;
+  box-shadow:0 4px 10px rgba(0,0,0,.15);
+}
+
+.empty{
+  background:none;
+  box-shadow:none;
+}
+
+canvas{
+  border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.15);
+  cursor:grab;
+}
+
+/* =============================
+   BIG SKIP BUTTON (NEW)
+============================= */
+
+#forceBtn{
+  position:fixed;
+  right:30px;
+  top:50%;
+  transform:translateY(-50%);
+  padding:22px 28px;
+  font-size:20px;
+  font-weight:700;
+  border:none;
+  border-radius:14px;
+  background:#ff6b6b;
+  color:white;
+  cursor:pointer;
+  box-shadow:0 8px 25px rgba(0,0,0,.25);
+  display:none;
+  z-index:9998;
+}
+</style>
+</head>
+
+<body>
+
+<!-- STORY -->
+<div id="storyOverlay">
+  <div id="storyBox">
+    <div id="storyText"></div>
+    <button id="storyBtn">Start</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="game">
+  <div id="area"></div>
+</div>
+
+<!-- SKIP BUTTON -->
+<button id="forceBtn">Skip Puzzle →</button>
+
+<script>
+/* ======================================================
+   JOURNEY
+====================================================== */
+
+function getJourney(){
+  return JSON.parse(localStorage.getItem("journey"));
+}
+
+let journey = getJourney();
+if(!journey || !journey.path) location.href="index.html";
+
+
+/* ======================================================
+   STORY INTRO
+====================================================== */
+
+const overlay = document.getElementById("storyOverlay");
+const storyText = document.getElementById("storyText");
+const storyBtn = document.getElementById("storyBtn");
+
+const name = journey.name || "Bon";
+
+const intro = journey.path==="A"
+? [
+    name + ", there’s one last thing waiting.",
+    "A small present sits quietly.",
+    "Maybe open it?"
+  ]
+: [
+    name + ", a strange sliding door blocks the way.",
+    "Looks like the pieces need rearranging.",
+    "One last puzzle."
+  ];
+
+let si=0;
+storyText.textContent=intro[0];
+
+storyBtn.onclick=()=>{
+  si++;
+  if(si>=intro.length){
+    overlay.style.display="none";
+    startGame();
+  }else{
+    storyText.textContent=intro[si];
+  }
+};
+
+
+/* ======================================================
+   SKIP BUTTON TIMER (SAFE)
+====================================================== */
+
+const forceBtn=document.getElementById("forceBtn");
+
+function startSkipTimer(){
+  setTimeout(()=>{
+    forceBtn.style.display="block";
+  },60000); // 30s
+}
+
+forceBtn.onclick=()=>{
+  location.href="index6.html";
+};
+
+
+/* ======================================================
+   START GAME
+====================================================== */
+
+function startGame(){
+  startSkipTimer();
+
+  if(journey.path==="A") dragPuzzle("present.jpg");
+  else slidingPuzzle("puzzleA.jpg");
+}
+
+
+/* ======================================================
+   PATH A — DRAG PUZZLE
+====================================================== */
+
+function dragPuzzle(imgSrc){
+
+  const area=document.getElementById("area");
+
+  const SIZE=120;
+  const canvas=document.createElement("canvas");
+  canvas.width=360;
+  canvas.height=360;
+
+  area.appendChild(canvas);
+
+  const ctx=canvas.getContext("2d");
+
+  const img=new Image();
+  img.src=imgSrc;
+
+  const pieces=[];
+  const SNAP=45;
+
+  let drag=null, ox=0, oy=0;
+
+  img.onload=()=>{
+    for(let y=0;y<3;y++){
+      for(let x=0;x<3;x++){
+        pieces.push({
+          sx:x*SIZE, sy:y*SIZE,
+          x:Math.random()*240,
+          y:Math.random()*240,
+          tx:x*SIZE, ty:y*SIZE,
+          locked:false
+        });
+      }
+    }
+    draw();
+  };
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(const p of pieces){
+      ctx.drawImage(img,p.sx,p.sy,SIZE,SIZE,p.x,p.y,SIZE,SIZE);
+    }
+  }
+
+  canvas.onmousedown=e=>{
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left;
+    const my=e.clientY-r.top;
+
+    for(const p of pieces){
+      if(p.locked) continue;
+      if(mx>p.x && mx<p.x+SIZE && my>p.y && my<p.y+SIZE){
+        drag=p;
+        ox=mx-p.x;
+        oy=my-p.y;
+        break;
+      }
+    }
+  };
+
+  canvas.onmousemove=e=>{
+    if(!drag) return;
+    const r=canvas.getBoundingClientRect();
+    drag.x=e.clientX-r.left-ox;
+    drag.y=e.clientY-r.top-oy;
+    draw();
+  };
+
+  window.onmouseup=()=>{
+    if(!drag) return;
+
+    if(Math.hypot(drag.x-drag.tx, drag.y-drag.ty)<SNAP){
+      drag.x=drag.tx;
+      drag.y=drag.ty;
+      drag.locked=true;
+    }
+
+    drag=null;
+    draw();
+
+    if(pieces.every(p=>p.locked)){
+      location.href="index6.html";
+    }
+  };
+}
+
+
+/* ======================================================
+   PATH B — SLIDING PUZZLE
+====================================================== */
+
+function slidingPuzzle(imgSrc){
+
+  const area=document.getElementById("area");
+
+  const grid=document.createElement("div");
+  grid.className="grid";
+  area.appendChild(grid);
+
+  let tiles=[0,1,2,3,4,5,6,7,null];
+  tiles.sort(()=>Math.random()-0.5);
+
+  function draw(){
+    grid.innerHTML="";
+    tiles.forEach((t,i)=>{
+      const d=document.createElement("div");
+      d.className="tile";
+
+      if(t!==null){
+        const x=(t%3)*120;
+        const y=Math.floor(t/3)*120;
+        d.style.backgroundImage=`url(${imgSrc})`;
+        d.style.backgroundPosition=`-${x}px -${y}px`;
+      }else{
+        d.classList.add("empty");
+      }
+
+      d.onclick=()=>move(i);
+      grid.appendChild(d);
+    });
+  }
+
+  function move(i){
+    const e=tiles.indexOf(null);
+    const valid=[e-1,e+1,e-3,e+3];
+
+    if(valid.includes(i)){
+      [tiles[i],tiles[e]]=[tiles[e],tiles[i]];
+      draw();
+
+      if(check()) location.href="index6.html";
+    }
+  }
+
+  function check(){
+    for(let i=0;i<8;i++) if(tiles[i]!==i) return false;
+    return true;
+  }
+
+  draw();
+}
+</script>
+
+</body>
+</html>

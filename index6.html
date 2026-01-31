@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Happy Birthday 🌸</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+
+/* =============================
+   PAGE LAYOUT
+============================= */
+
+body{
+  margin:0;
+  font-family:system-ui, sans-serif;
+  background:linear-gradient(180deg,#fff6f0,#f3f7ff);
+
+  min-height:100vh;
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  padding:40px 20px;
+}
+
+
+/* =============================
+   CONTAINER
+============================= */
+
+.wrap{
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:28px;
+  max-width:720px;
+  width:100%;
+}
+
+
+/* =============================
+   FLOWER IMAGE (fixed properly)
+============================= */
+
+.reward{
+  max-width:100%;
+  max-height:65vh;
+  width:auto;
+  height:auto;
+
+  border-radius:20px;
+  box-shadow:0 15px 40px rgba(0,0,0,.25);
+
+  object-fit:contain;
+}
+
+
+/* =============================
+   MESSAGE
+============================= */
+
+.msg{
+  font-size:18px;
+  line-height:1.7;
+  white-space:pre-line;
+  max-width:560px;
+}
+
+
+/* =============================
+   BUTTON GROUPS
+============================= */
+
+.buttons{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:12px;
+}
+
+
+/* =============================
+   BUTTON STYLE
+============================= */
+
+button{
+  padding:10px 16px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  font-weight:600;
+  font-size:14px;
+  transition:.15s;
+}
+
+button:hover{
+  transform:translateY(-2px);
+}
+
+
+/* colors */
+
+.rateBtn{
+  background:#c77dff;
+  color:white;
+}
+
+.replay{
+  background:#ff6b6b;
+  color:white;
+}
+
+.stay{
+  background:#4dabf7;
+  color:white;
+}
+
+</style>
+</head>
+
+
+
+<body>
+
+<div class="wrap">
+
+  <!-- 🌸 FLOWER IMAGE -->
+  <img src="birthday.jpg" class="reward" alt="Flower">
+
+  <!-- MESSAGE -->
+  <div id="message" class="msg"></div>
+
+  <!-- RATING -->
+  <div id="rating" class="buttons"></div>
+
+  <!-- ACTION BUTTONS -->
+  <div class="buttons">
+    <button class="stay">Stay</button>
+    <button class="replay">Replay</button>
+  </div>
+
+</div>
+
+
+
+<script>
+
+/* =============================
+   JOURNEY
+============================= */
+
+const journey = JSON.parse(localStorage.getItem("journey")) || {};
+const name = journey.name || "Bon";
+
+
+/* =============================
+   MESSAGE TEXT
+============================= */
+
+document.getElementById("message").textContent =
+name + ",\n\n" +
+"Thanks for walking through all of this with me.\n" +
+"Every step, every little puzzle.\n\n" +
+"You’re honestly someone really important to me.\n" +
+"I appreciate you more than I say out loud.\n\n" +
+"Happy Birthday 🌸";
+
+
+/* =============================
+   MUSIC (Path A only, safe autoplay)
+============================= */
+
+if(journey.path === "A"){
+
+  const audio = new Audio("birthdaysong.mp3");
+  audio.loop = true;
+  audio.volume = 0.9;
+
+  // play after load so browser allows it
+  window.addEventListener("load", ()=>{
+    audio.play().catch(()=>{});
+  });
+}
+
+
+/* =============================
+   RATING 1–10
+============================= */
+
+const ratingBox = document.getElementById("rating");
+
+for(let i=1;i<=10;i++){
+  const b=document.createElement("button");
+  b.textContent=i;
+  b.className="rateBtn";
+
+  b.onclick=()=>{
+    alert("Thanks for rating it " + i + "/10 ❤️");
+  };
+
+  ratingBox.appendChild(b);
+}
+
+
+/* =============================
+   BUTTONS
+============================= */
+
+document.querySelector(".replay").onclick=()=>{
+  localStorage.removeItem("journey");  // reset game
+  location.href="index.html";
+};
+
+document.querySelector(".stay").onclick=()=>{
+  alert("Stay as long as you like 🌸");
+};
+
+
+</script>
+</body>
+</html>

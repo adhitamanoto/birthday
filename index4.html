@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Maze</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+body{
+  margin:0;
+  background:linear-gradient(180deg,#f7fbff,#fff6f0);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  font-family:system-ui;
+}
+
+canvas{
+  background:white;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+/* ======================================================
+   STORY OVERLAY (ADDED ONLY)
+====================================================== */
+
+#storyOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+  text-align:center;
+  color:white;
+}
+
+#storyBox{
+  max-width:600px;
+  padding:28px;
+  line-height:1.6;
+  font-size:18px;
+}
+
+#storyBtn{
+  margin-top:18px;
+  padding:12px 20px;
+  border:none;
+  border-radius:12px;
+  background:#c77dff;
+  color:white;
+  font-weight:600;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ======================================================
+     STORY OVERLAY (ADDED ONLY)
+====================================================== -->
+<div id="storyOverlay">
+  <div id="storyBox">
+    <div id="storyText"></div>
+    <button id="storyBtn">Next</button>
+  </div>
+</div>
+
+<canvas id="maze"></canvas>
+
+<script>
+/* ======================================================
+   JOURNEY
+====================================================== */
+
+function getJourney(){
+  return JSON.parse(localStorage.getItem("journey"));
+}
+function saveJourney(j){
+  localStorage.setItem("journey", JSON.stringify(j));
+}
+
+let journey=getJourney();
+
+if(!journey || !journey.path){
+  window.location.href="index.html";
+}
+
+if(!journey.order.includes("index4")){
+  journey.order.push("index4");
+  saveJourney(journey);
+}
+
+
+/* ======================================================
+   MAZE SETTINGS (PATH BASED)
+====================================================== */
+
+let COLS, ROWS;
+
+if(journey.path==="A"){
+  COLS=14;   // easier
+  ROWS=10;
+}else{
+  COLS=20;   // harder
+  ROWS=14;
+}
+
+const SIZE=36;
+
+
+/* ======================================================
+   CANVAS
+====================================================== */
+
+const canvas=document.getElementById("maze");
+const ctx=canvas.getContext("2d");
+
+canvas.width=COLS*SIZE;
+canvas.height=ROWS*SIZE;
+
+
+/* ======================================================
+   MAZE GENERATION (UNCHANGED)
+====================================================== */
+
+const grid=[];
+for(let y=0;y<ROWS;y++){
+  grid[y]=[];
+  for(let x=0;x<COLS;x++){
+    grid[y][x]={v:false,w:[1,1,1,1]};
+  }
+}
+
+function shuffle(a){return a.sort(()=>Math.random()-0.5)}
+
+function carve(x,y){
+  grid[y][x].v=true;
+
+  for(const [dx,dy,i,o] of shuffle([
+    [0,-1,0,2],
+    [1,0,1,3],
+    [0,1,2,0],
+    [-1,0,3,1]
+  ])){
+    const nx=x+dx, ny=y+dy;
+    if(nx>=0&&ny>=0&&nx<COLS&&ny<ROWS&&!grid[ny][nx].v){
+      grid[y][x].w[i]=0;
+      grid[ny][nx].w[o]=0;
+      carve(nx,ny);
+    }
+  }
+}
+
+carve(0,0);
+
+
+/* ======================================================
+   PLAYER
+====================================================== */
+
+let px=0, py=0;
+const exitX=COLS-1;
+
+const playerImg = new Image();
+playerImg.src = "sunny.png";
+
+
+/* ======================================================
+   DRAW
+====================================================== */
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle="#222";
+  ctx.lineWidth=2;
+
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const c=grid[y][x];
+      const sx=x*SIZE, sy=y*SIZE;
+
+      if(c.w[0]) line(sx,sy,sx+SIZE,sy);
+      if(c.w[1]) line(sx+SIZE,sy,sx+SIZE,sy+SIZE);
+      if(c.w[2]) line(sx,sy+SIZE,sx+SIZE,sy+SIZE);
+      if(c.w[3]) line(sx,sy,sx,sy+SIZE);
+    }
+  }
+
+  ctx.fillStyle="lightgreen";
+  ctx.fillRect(exitX*SIZE+10,(ROWS-1)*SIZE+10,SIZE-20,SIZE-20);
+
+  const pad=6;
+  ctx.drawImage(playerImg, px*SIZE+pad, py*SIZE+pad, SIZE-pad*2, SIZE-pad*2);
+}
+
+function line(x1,y1,x2,y2){
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+}
+
+
+/* ======================================================
+   STORY SYSTEM (NEW ONLY — SAFE)
+====================================================== */
+
+const overlay=document.getElementById("storyOverlay");
+const storyText=document.getElementById("storyText");
+const storyBtn=document.getElementById("storyBtn");
+
+let movementEnabled=false;
+
+const name=journey.name || "Bon";
+
+const intro = journey.path==="A"
+  ? [
+      name + ", the path narrows into a quiet maze.",
+      "Quick feet. Trust your instincts.",
+      "Find the exit."
+    ]
+  : [
+      name + ", this place feels… older.",
+      "Walls twist like a puzzle box.",
+      "Take your time. Think it through."
+    ];
+
+const outro=[
+  "You made it.",
+  "The next door unlocks..."
+];
+
+let pages=[], i=0;
+
+function showPages(list, callback){
+  pages=list;
+  i=0;
+  overlay.style.display="flex";
+  storyText.textContent=pages[i];
+
+  storyBtn.onclick=function(){
+    i++;
+    if(i>=pages.length){
+      overlay.style.display="none";
+      callback();
+    }else{
+      storyText.textContent=pages[i];
+    }
+  };
+}
+
+
+/* ======================================================
+   MOVEMENT (ONLY GUARD ADDED)
+====================================================== */
+
+document.addEventListener("keydown",e=>{
+
+  if(!movementEnabled) return;
+
+  const c=grid[py][px];
+
+  if(e.key==="ArrowUp"||e.key==="w") if(!c.w[0]) py--;
+  if(e.key==="ArrowRight"||e.key==="d") if(!c.w[1]) px++;
+  if(e.key==="ArrowDown"||e.key==="s") if(!c.w[2]) py++;
+  if(e.key==="ArrowLeft"||e.key==="a") if(!c.w[3]) px--;
+
+  draw();
+
+  if(px===exitX && py===ROWS-1){
+    finish();
+  }
+});
+
+
+/* ======================================================
+   NEXT LEVEL (OUTRO ADDED)
+====================================================== */
+
+function finish(){
+
+  movementEnabled=false;
+
+  showPages(outro, ()=>{
+
+    const journey=getJourney();
+
+    if(!journey.order.includes("index1")){
+      window.location.href="index1.html";
+    }
+    else if(!journey.order.includes("index2")){
+      window.location.href="index2.html";
+    }
+    else{
+      window.location.href="index5.html";
+    }
+
+  });
+}
+
+
+/* ======================================================
+   INIT
+====================================================== */
+
+draw();
+
+showPages(intro, ()=>{
+  movementEnabled=true;
+});
+</script>
+</body>
+</html>
