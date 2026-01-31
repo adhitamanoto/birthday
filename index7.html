@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Memory</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui;
+  background:linear-gradient(180deg,#f3f7ff,#fff6f0);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  padding:40px 20px;
+}
+
+.wrap{
+  text-align:center;
+  max-width:900px;
+}
+
+.images{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.images img{
+  max-width:420px;
+  width:100%;
+  border-radius:16px;
+  box-shadow:0 10px 25px rgba(0,0,0,.2);
+}
+
+.msg{
+  margin-top:28px;
+  line-height:1.7;
+  font-size:18px;
+  white-space:pre-line;
+}
+
+.buttons{
+  margin-top:22px;
+  display:flex;
+  gap:12px;
+  justify-content:center;
+}
+
+button{
+  padding:10px 18px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.replay{ background:#ff6b6b; color:white; }
+.stay{ background:#4dabf7; color:white; }
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+  <div class="images">
+    <img src="cactus1.png">
+    <img src="cactus2.png">
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <div class="buttons">
+    <button class="stay">Stay</button>
+    <button class="replay">Replay</button>
+  </div>
+
+</div>
+
+<script>
+const journey = JSON.parse(localStorage.getItem("journey")) || {};
+const name = journey.name || "Bon";
+
+/* ===== MUSIC AUTO ===== */
+const audio = new Audio("minecraft.mp3");
+audio.loop = true;
+audio.play().catch(()=>{});
+
+/* ===== STORY ===== */
+document.getElementById("msg").textContent =
+name + ",\n\n" +
+"There appear a memory that was forgotten\n" +
+"A treasure that have been burried for years\n" +
+"Treasure that can never be erase\n\n" +
+"Not because it is unforgettable but because its worth \n\n" +
+"May a greater memory be created ahead of time or should I say a greater treasure";
+
+/* ===== BUTTONS ===== */
+document.querySelector(".replay").onclick=()=>{
+  localStorage.removeItem("journey");
+  location.href="index.html";
+};
+
+document.querySelector(".stay").onclick=()=>{
+  alert("Stay as long as you want ❤️");
+};
+</script>
+
+</body>
+</html>
